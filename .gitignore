@@ -5,6 +5,7 @@
 
 # Ignore configuration
 **/appsettings.*
+!**/appsettings.Example.*
 
 # User-specific files
 *.rsuser
