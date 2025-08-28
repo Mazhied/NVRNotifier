@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NVRNotifier.Bot.Abstract;
+using NVRNotifier.Core.Clients;
 
 namespace NVRNotifier.Worker
 {

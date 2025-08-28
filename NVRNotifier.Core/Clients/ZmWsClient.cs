@@ -12,21 +12,23 @@ namespace NVRNotifier.Core.Clients
     public class ZmWsClient : IDisposable
     {
         private ClientWebSocket _webSocket;
-        private readonly string _apiKey;
-        private readonly string _apiSecret;
+        private readonly string _apiUser;
+        private readonly string _apiPassword;
         private readonly string _zmHost;
+        private readonly string _zmPort;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
-        public event EventHandler<ZmEvent>? OnEventReceived;
+        public event EventHandler<ZmEventReceivedMessage>? OnEventReceived;
         public event EventHandler<string>? OnError;
         public event EventHandler? OnConnected;
         public event EventHandler? OnDisconnected;
 
-        public ZmWsClient(string host, string apiKey, string apiSecret)
+        public ZmWsClient(string host, string port, string user, string password)
         {
             _zmHost = host;
-            _apiKey = apiKey;
-            _apiSecret = apiSecret;
+            _zmPort = port;
+            _apiUser = user;
+            _apiPassword = password;
             _cancellationTokenSource = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
         }
@@ -35,17 +37,13 @@ namespace NVRNotifier.Core.Clients
         {
             try
             {
-                var uri = new Uri($"ws://{_zmHost}/zm/api/events/watch");
-
-                // Добавляем заголовок авторизации
-                _webSocket.Options.SetRequestHeader("Authorization",
-                    GetBasicAuthHeader(_apiKey, _apiSecret));
+                var uri = new Uri($"wss://{_zmHost}:{_zmPort}");
 
                 await _webSocket.ConnectAsync(uri, _cancellationTokenSource.Token);
                 OnConnected?.Invoke(this, EventArgs.Empty);
 
-                // Отправляем подписку на события
-                await SubscribeToEvents();
+                // Авторизуемся
+                await AuthenticateAsync();
 
                 // Запускаем прослушивание сообщений
                 _ = Task.Run(ReceiveMessagesAsync, _cancellationTokenSource.Token);
@@ -56,23 +54,39 @@ namespace NVRNotifier.Core.Clients
             }
         }
 
-        private async Task SubscribeToEvents()
+        private async Task AuthenticateAsync()
         {
-            var subscribeMessage = new
+            var authMessage = new ZmAuthSentMessage()
             {
-                action = "subscribe",
-                topic = "events"
+                Event = "auth",
+                Data = new ZmAuthData()
+                {
+                    User = _apiUser,
+                    Password = _apiPassword
+                }
             };
-
-            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(subscribeMessage);
-            //var bytes = Encoding.UTF8.GetBytes(json);
-
+            
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(authMessage);
             await _webSocket.SendAsync(
                 new ArraySegment<byte>(jsonBytes),
                 WebSocketMessageType.Text,
                 true,
                 _cancellationTokenSource.Token
             );
+
+            
+            var buffer = new byte[4096];
+            var result = await _webSocket.ReceiveAsync(
+                new ArraySegment<byte>(buffer),
+                _cancellationTokenSource.Token
+            );
+
+            var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            var authReceivedMessage = JsonSerializer.Deserialize<ZmAuthReceivedMessage>(message);
+            if (authReceivedMessage == null || authReceivedMessage.Status != "success")
+            {
+                throw new Exception("Authentication failed");
+            }
         }
 
         private async Task ReceiveMessagesAsync()
@@ -118,7 +132,7 @@ namespace NVRNotifier.Core.Clients
         {
             try
             {
-                var zmEvent = JsonSerializer.Deserialize<ZmEvent>(message);
+                var zmEvent = JsonSerializer.Deserialize<ZmEventReceivedMessage>(message);
 
                 if (zmEvent != null)
                 {

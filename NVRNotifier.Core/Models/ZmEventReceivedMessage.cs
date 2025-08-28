@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NVRNotifier.Core.Models
 {
-    public class ZmEvent
+    public class ZmEventReceivedMessage
     {
         public string Event { get; set; } = string.Empty;
         public ZmMonitor Monitor { get; set; }
