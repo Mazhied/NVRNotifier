@@ -7,13 +7,13 @@ namespace NVRNotifier.Worker
 {
     public class Worker : BackgroundService
     {
-        private readonly IServiceProvider serviceProvider;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<Worker> _logger;
 
         public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
         {
             _logger = logger;
-            this.serviceProvider = serviceProvider;
+            _serviceProvider = serviceProvider;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -22,9 +22,11 @@ namespace NVRNotifier.Worker
             {
                 try
                 {
+                    //todo: добавить zmwsclient и обработку событий OnEventReceived и OnError
+
                     // Create new IServiceScope on each iteration. This way we can leverage benefits
                     // of Scoped TReceiverService and typed HttpClient - we'll grab "fresh" instance each time
-                    using var scope = serviceProvider.CreateScope();
+                    using var scope = _serviceProvider.CreateScope();
                     var receiver = scope.ServiceProvider.GetRequiredService<IReceiverService>();
 
                     await receiver.ReceiveAsync(stoppingToken);

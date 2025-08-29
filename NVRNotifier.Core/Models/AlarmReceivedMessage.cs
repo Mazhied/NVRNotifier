@@ -7,18 +7,22 @@ using System.Threading.Tasks;
 
 namespace NVRNotifier.Core.Models
 {
-    public class ZmAuthReceivedMessage: IReceivedMessage
+    public class AlarmReceivedMessage: IReceivedMessage
     {
         [JsonPropertyName("event")]
         public string Event { get; set; } = string.Empty;
         [JsonPropertyName("type")]
         public string Type { get; set; } = string.Empty;
-        [JsonPropertyName("reason")]
-        public string Reason { get; set; } = string.Empty;
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
-        [JsonPropertyName("version")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string? Version { get; set; }
+        [JsonPropertyName("events")]
+        public List<AlarmEvent> Events { get; set; } = new List<AlarmEvent>();
+    }
+
+    public class AlarmEvent
+    {
+        public string EventId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string MonitorId { get; set; } = string.Empty;
     }
 }

@@ -9,6 +9,7 @@ namespace NVRNotifier.Core.Settings
     public interface IAppSettings
     {
         string ZoneMinderHost { get; set; }
+        string ZoneMinderPort { get; set; }
         string ZoneMinderUser {  get; set; }
         string ZoneMinderPassword { get; set; }
         string UseApiSsl { get; set; }

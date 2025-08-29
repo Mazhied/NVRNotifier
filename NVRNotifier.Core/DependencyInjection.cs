@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NVRNotifier.Core.Clients;
 using NVRNotifier.Core.Settings;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ namespace NVRNotifier.Core
         public static IServiceCollection AddCore(this IServiceCollection serviceColleciton)
         {
             serviceColleciton.AddSingleton<IAppSettings, AppSettings>();
+            serviceColleciton.AddSingleton<ZmWsClientFactory>();
             return serviceColleciton;
         }
     }

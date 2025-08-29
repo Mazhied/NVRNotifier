@@ -5,6 +5,9 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Serilog;
+using Microsoft.Extensions.Logging;
+using Serilog.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace NVRNotifier.Core.Clients
@@ -17,13 +20,15 @@ namespace NVRNotifier.Core.Clients
         private readonly string _zmHost;
         private readonly string _zmPort;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly ILogger<ZmWsClient> _logger;
 
-        public event EventHandler<ZmEventReceivedMessage>? OnEventReceived;
+        public event EventHandler<AlarmReceivedMessage?>? OnEventReceived;
         public event EventHandler<string>? OnError;
         public event EventHandler? OnConnected;
         public event EventHandler? OnDisconnected;
 
-        public ZmWsClient(string host, string port, string user, string password)
+
+        public ZmWsClient(string host, string port, string user, string password, ILogger<ZmWsClient> logger)
         {
             _zmHost = host;
             _zmPort = port;
@@ -31,6 +36,7 @@ namespace NVRNotifier.Core.Clients
             _apiPassword = password;
             _cancellationTokenSource = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
+            _logger = logger;
         }
 
         public async Task ConnectAsync()
@@ -50,6 +56,7 @@ namespace NVRNotifier.Core.Clients
             }
             catch (Exception ex)
             {
+                Dispose();
                 OnError?.Invoke(this, $"Connection error: {ex.Message}");
             }
         }
@@ -85,7 +92,8 @@ namespace NVRNotifier.Core.Clients
             var authReceivedMessage = JsonSerializer.Deserialize<ZmAuthReceivedMessage>(message);
             if (authReceivedMessage == null || authReceivedMessage.Status != "success")
             {
-                throw new Exception("Authentication failed");
+                _logger.LogError($"Authentication failed: {authReceivedMessage?.Reason}");
+                OnError?.Invoke(this, $"Authentication failed: {authReceivedMessage?.Reason}");
             }
         }
 
@@ -114,8 +122,18 @@ namespace NVRNotifier.Core.Clients
                         break;
                     }
 
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    ProcessMessage(message);
+                    var rawStringMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    using var doc = JsonDocument.Parse(rawStringMessage);
+                    string? eventType = doc.RootElement.GetProperty("event").GetString();
+                    // Обрабатываем только alarm сообщения
+                    if (eventType != "alarm")
+                    {
+                        continue;
+                    }
+
+                    var alarmMessage = JsonSerializer.Deserialize<AlarmReceivedMessage>(rawStringMessage);
+                    
+                    OnEventReceived?.Invoke(this, alarmMessage);
                 }
             }
             catch (OperationCanceledException)
@@ -126,47 +144,6 @@ namespace NVRNotifier.Core.Clients
             {
                 OnError?.Invoke(this, $"Receive error: {ex.Message}");
             }
-        }
-
-        private void ProcessMessage(string message)
-        {
-            try
-            {
-                var zmEvent = JsonSerializer.Deserialize<ZmEventReceivedMessage>(message);
-
-                if (zmEvent != null)
-                {
-                    OnEventReceived?.Invoke(this, zmEvent);
-
-                    // Обработка конкретных типов событий
-                    switch (zmEvent.Event)
-                    {
-                        case "EventStart":
-                            Console.WriteLine($"Motion started: {zmEvent.EventData.Id}");
-                            break;
-                        case "EventEnd":
-                            Console.WriteLine($"Motion ended: {zmEvent.EventData.Id}");
-                            break;
-                        case "Heartbeat":
-                            // Игнорируем heartbeat сообщения
-                            break;
-                        default:
-                            Console.WriteLine($"Unknown event type: {zmEvent.Event}");
-                            break;
-                    }
-                }
-            }
-            catch (JsonException ex)
-            {
-                OnError?.Invoke(this, $"JSON parse error: {ex.Message}");
-            }
-        }
-
-        private string GetBasicAuthHeader(string username, string password)
-        {
-            var credentials = $"{username}:{password}";
-            var base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
-            return $"Basic {base64Credentials}";
         }
 
         public async Task DisconnectAsync()
