@@ -9,15 +9,25 @@ namespace NVRNotifier.Worker
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<Worker> _logger;
+        private readonly ZmWsClientFactory _zmWsClientFactory;
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, ZmWsClientFactory zmWsClientFactory)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _zmWsClientFactory = zmWsClientFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation($"Worker running at: {DateTimeOffset.Now}");
+
+            //var zmWsClient = _zmWsClientFactory.Create();
+            //await zmWsClient.ConnectAsync();
+            //zmWsClient.OnEventReceived += async (sender, message) =>
+            //{
+                
+            //};
             while (!stoppingToken.IsCancellationRequested)
             {
                 try

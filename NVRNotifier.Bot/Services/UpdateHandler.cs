@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using NVRNotifier.Core.Clients;
+using NVRNotifier.Core.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,9 +16,11 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace NVRNotifier.Bot.Services
 {
-    public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger) : IUpdateHandler
+    public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, ZmWsClientFactory zmWsClientFactory, IAppSettings appSettings) : IUpdateHandler
     {
         private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
+        private readonly ZmWsClientFactory _zmWsClientFactory = zmWsClientFactory;
+        private readonly IAppSettings _appSettings = appSettings;
 
         public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
         {
@@ -54,6 +58,7 @@ namespace NVRNotifier.Bot.Services
 
             Message sentMessage = await (messageText.Split(' ')[0] switch
             {
+                "/help" => Usage(msg),
                 "/photo" => SendPhoto(msg),
                 "/inline_buttons" => SendInlineKeyboard(msg),
                 "/keyboard" => SendReplyKeyboard(msg),
@@ -71,7 +76,7 @@ namespace NVRNotifier.Bot.Services
         async Task<Message> Usage(Message msg)
         {
             const string usage = """
-                <b><u>Bot menu</u></b>:
+                <b><u>Команды бота</u></b>:
                 /photo          - send a photo
                 /inline_buttons - send inline buttons
                 /keyboard       - send keyboard buttons

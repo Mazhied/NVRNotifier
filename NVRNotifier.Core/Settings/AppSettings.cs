@@ -15,12 +15,14 @@ namespace NVRNotifier.Core.Settings
         public string ZoneMinderPassword { get; set; }
         public string UseApiSsl { get; set; }
         public string TelegramBotToken { get; set; }
+        public string ChatId { get; set; }
 
         public AppSettings(IConfiguration configuration)
         {
             this.ZoneMinderHost = configuration.GetValue<string>("ZoneMinder:Server") ?? "127.0.0.1";
             this.ZoneMinderPort = configuration.GetValue<string>("ZoneMinder:Port") ?? "9000";
             this.TelegramBotToken = configuration.GetValue<string>("Telegram:BotToken") ?? "";
+            this.ChatId = configuration.GetValue<string>("Telegram:ChatId") ?? "";
         }
 
 
