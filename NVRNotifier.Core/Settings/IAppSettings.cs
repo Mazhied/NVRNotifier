@@ -14,6 +14,6 @@ namespace NVRNotifier.Core.Settings
         string ZoneMinderPassword { get; set; }
         string UseApiSsl { get; set; }
         string TelegramBotToken { get; set; }
-        string ChatId { get; set; }
+        long ChatId { get; set; }
     }
 }

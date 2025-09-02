@@ -36,12 +36,12 @@ namespace NVRNotifier.Bot.Services
             await (update switch
             {
                 { Message: { } message } => OnMessage(message),
-                { EditedMessage: { } message } => OnMessage(message),
-                { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
-                { InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
-                { ChosenInlineResult: { } chosenInlineResult } => OnChosenInlineResult(chosenInlineResult),
-                { Poll: { } poll } => OnPoll(poll),
-                { PollAnswer: { } pollAnswer } => OnPollAnswer(pollAnswer),
+                //{ EditedMessage: { } message } => OnMessage(message),
+                //{ CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
+                //{ InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
+                //{ ChosenInlineResult: { } chosenInlineResult } => OnChosenInlineResult(chosenInlineResult),
+                //{ Poll: { } poll } => OnPoll(poll),
+                //{ PollAnswer: { } pollAnswer } => OnPollAnswer(pollAnswer),
                 // UpdateType.ChannelPost:
                 // UpdateType.EditedChannelPost:
                 // UpdateType.ShippingQuery:
@@ -53,12 +53,18 @@ namespace NVRNotifier.Bot.Services
         private async Task OnMessage(Message msg)
         {
             logger.LogInformation("Receive message type: {MessageType}", msg.Type);
-            if (msg.Text is not { } messageText)
+
+
+
+            if (msg.Text == null && msg.Chat.Id != _appSettings.ChatId)
                 return;
 
-            Message sentMessage = await (messageText.Split(' ')[0] switch
+
+            Message sentMessage = await (msg.Text.Split(' ')[0] switch
             {
                 "/help" => Usage(msg),
+                "/on" => TurnOnAlarm(msg),
+                "/off" => TurnOffAlarm(msg),
                 "/photo" => SendPhoto(msg),
                 "/inline_buttons" => SendInlineKeyboard(msg),
                 "/keyboard" => SendReplyKeyboard(msg),
@@ -73,10 +79,38 @@ namespace NVRNotifier.Bot.Services
             logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.Id);
         }
 
+        private async Task<Message> TurnOnAlarm(Message msg)
+        {
+            var zmWsClient = _zmWsClientFactory.Create();
+            zmWsClient.OnEventReceived += (sender, zmMessage) =>
+            {
+                var cameraName = zmMessage?.Events[0].Name;
+                var eventId = zmMessage?.Events[0].EventId;
+                bot.SendPhoto(msg.Chat, $"https://{eventId}", $"{cameraName}");
+            };
+
+            await bot.SendMessage(msg.Chat, "✅<b>Включено</b> оповещение с камер", ParseMode.Html);
+            throw new NotImplementedException();
+        }
+
+        private async Task<Message> TurnOffAlarm(Message msg)
+        {
+
+            await bot.SendMessage(msg.Chat, $"❌<b>Выключено</b> оповещение с камер", ParseMode.Html);
+            throw new NotImplementedException();
+        }
+
+        private async Task SendAlarmMedia(Message msg)
+        {
+
+        }
+
         async Task<Message> Usage(Message msg)
         {
             const string usage = """
                 <b><u>Команды бота</u></b>:
+                /on             - Включить оповещение с камер
+                /off            - Выключить оповещение с камер
                 /photo          - send a photo
                 /inline_buttons - send inline buttons
                 /keyboard       - send keyboard buttons
