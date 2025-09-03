@@ -54,6 +54,11 @@ namespace NVRNotifier.Core.Clients
                 // Запускаем прослушивание сообщений
                 _ = Task.Run(ReceiveMessagesAsync, _cancellationTokenSource.Token);
             }
+            catch (WebSocketException ex)
+            {
+                Dispose();
+                OnError?.Invoke(this, $"Ошибка при попытке установить соединение по вебсокету: {ex.Message}");
+            }
             catch (Exception ex)
             {
                 Dispose();

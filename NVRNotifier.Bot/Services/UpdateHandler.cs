@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using NVRNotifier.Core.Clients;
+using NVRNotifier.Core.Models;
 using NVRNotifier.Core.Settings;
 using System;
 using System.Collections.Generic;
@@ -19,8 +20,11 @@ namespace NVRNotifier.Bot.Services
     public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, ZmWsClientFactory zmWsClientFactory, IAppSettings appSettings) : IUpdateHandler
     {
         private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
-        private readonly ZmWsClientFactory _zmWsClientFactory = zmWsClientFactory;
-        private readonly IAppSettings _appSettings = appSettings;
+
+        private ZmWsClient zmWsClient = zmWsClientFactory.Create();
+        private EventHandler<AlarmReceivedMessage?>? onMessageReceivedHandler = null;
+
+        private bool isTurnedOn = false;
 
         public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
         {
@@ -52,19 +56,17 @@ namespace NVRNotifier.Bot.Services
 
         private async Task OnMessage(Message msg)
         {
-            logger.LogInformation("Receive message type: {MessageType}", msg.Type);
-
-
-
-            if (msg.Text == null && msg.Chat.Id != _appSettings.ChatId)
+            if (msg.Text == null || msg.Text[0] != '/' || msg.Chat.Id != appSettings.ChatId)
                 return;
 
+            logger.LogInformation($"Получена команда: {msg.Text}");
 
-            Message sentMessage = await (msg.Text.Split(' ')[0] switch
+            await (msg.Text.Split(' ')[0] switch
             {
                 "/help" => Usage(msg),
                 "/on" => TurnOnAlarm(msg),
                 "/off" => TurnOffAlarm(msg),
+                "status" => GetStatus(msg),
                 "/photo" => SendPhoto(msg),
                 "/inline_buttons" => SendInlineKeyboard(msg),
                 "/keyboard" => SendReplyKeyboard(msg),
@@ -76,33 +78,64 @@ namespace NVRNotifier.Bot.Services
                 "/throw" => FailingHandler(msg),
                 _ => Usage(msg)
             });
-            logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.Id);
         }
 
-        private async Task<Message> TurnOnAlarm(Message msg)
+        private async Task TurnOnAlarm(Message msg)
         {
-            var zmWsClient = _zmWsClientFactory.Create();
-            zmWsClient.OnEventReceived += (sender, zmMessage) =>
+            if (isTurnedOn)
+            {
+                await GetStatus(msg);
+                return;
+            }
+                
+            isTurnedOn = true;
+
+            onMessageReceivedHandler = (sender, zmMessage) =>
             {
                 var cameraName = zmMessage?.Events[0].Name;
                 var eventId = zmMessage?.Events[0].EventId;
                 bot.SendPhoto(msg.Chat, $"https://{eventId}", $"{cameraName}");
             };
+            zmWsClient.OnEventReceived += onMessageReceivedHandler;
+
+            await zmWsClient.ConnectAsync();
 
             await bot.SendMessage(msg.Chat, "✅<b>Включено</b> оповещение с камер", ParseMode.Html);
-            throw new NotImplementedException();
+            logger.LogInformation("Включено оповещение с камер");
         }
 
-        private async Task<Message> TurnOffAlarm(Message msg)
+        private async Task TurnOffAlarm(Message msg)
         {
+            if (!isTurnedOn)
+            {
+                await GetStatus(msg);
+                return;
+            }
+
+            isTurnedOn = false;
+
+            if (onMessageReceivedHandler != null)
+            {
+                zmWsClient.OnEventReceived -= onMessageReceivedHandler;
+                onMessageReceivedHandler = null;
+            }
+
+            await zmWsClient.DisconnectAsync();
 
             await bot.SendMessage(msg.Chat, $"❌<b>Выключено</b> оповещение с камер", ParseMode.Html);
-            throw new NotImplementedException();
+            logger.LogInformation("Выключено оповещение с камер");
         }
 
-        private async Task SendAlarmMedia(Message msg)
+        private async Task GetStatus(Message msg)
         {
-
+            if (isTurnedOn)
+            {
+                await bot.SendMessage(msg.Chat, "Статус: ▶работает", ParseMode.Html);
+            }
+            else
+            {
+                await bot.SendMessage(msg.Chat, "Статус: ◼остановлен", ParseMode.Html);
+            }
         }
 
         async Task<Message> Usage(Message msg)
@@ -111,6 +144,7 @@ namespace NVRNotifier.Bot.Services
                 <b><u>Команды бота</u></b>:
                 /on             - Включить оповещение с камер
                 /off            - Выключить оповещение с камер
+                /status         - Проверить состояние работы
                 /photo          - send a photo
                 /inline_buttons - send inline buttons
                 /keyboard       - send keyboard buttons
