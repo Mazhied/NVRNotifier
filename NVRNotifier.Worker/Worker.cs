@@ -20,7 +20,7 @@ namespace NVRNotifier.Worker
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation($"Worker running at: {DateTimeOffset.Now}");
+            _logger.LogInformation($"Сервис запущен: {DateTimeOffset.Now}");
 
             //var zmWsClient = _zmWsClientFactory.Create();
             //await zmWsClient.ConnectAsync();

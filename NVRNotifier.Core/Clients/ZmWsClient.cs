@@ -19,7 +19,7 @@ namespace NVRNotifier.Core.Clients
         private readonly string _apiPassword;
         private readonly string _zmHost;
         private readonly string _zmPort;
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
         private readonly ILogger<ZmWsClient> _logger;
 
         public event EventHandler<AlarmReceivedMessage?>? OnEventReceived;
@@ -34,8 +34,8 @@ namespace NVRNotifier.Core.Clients
             _zmPort = port;
             _apiUser = user;
             _apiPassword = password;
-            _cancellationTokenSource = new CancellationTokenSource();
-            _webSocket = new ClientWebSocket();
+            //_cancellationTokenSource = new CancellationTokenSource();
+
             _logger = logger;
         }
 
@@ -44,6 +44,10 @@ namespace NVRNotifier.Core.Clients
             try
             {
                 var uri = new Uri($"wss://{_zmHost}:{_zmPort}");
+                _webSocket = new ClientWebSocket();
+                _webSocket.Options.RemoteCertificateValidationCallback += (o, c, ch, er) => true;
+                _cancellationTokenSource = new CancellationTokenSource();
+
 
                 await _webSocket.ConnectAsync(uri, _cancellationTokenSource.Token);
                 OnConnected?.Invoke(this, EventArgs.Empty);
@@ -56,12 +60,12 @@ namespace NVRNotifier.Core.Clients
             }
             catch (WebSocketException ex)
             {
-                Dispose();
+                await DisconnectAsync();
                 OnError?.Invoke(this, $"Ошибка при попытке установить соединение по вебсокету: {ex.Message}");
             }
             catch (Exception ex)
             {
-                Dispose();
+                await DisconnectAsync();
                 OnError?.Invoke(this, $"Connection error: {ex.Message}");
             }
         }
@@ -98,7 +102,7 @@ namespace NVRNotifier.Core.Clients
             if (authReceivedMessage == null || authReceivedMessage.Status != "success")
             {
                 _logger.LogError($"Authentication failed: {authReceivedMessage?.Reason}");
-                OnError?.Invoke(this, $"Authentication failed: {authReceivedMessage?.Reason}");
+                throw new Exception($"Authentication failed: {authReceivedMessage?.Reason}");
             }
         }
 

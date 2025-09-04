@@ -23,6 +23,7 @@ namespace NVRNotifier.Bot.Services
 
         private ZmWsClient zmWsClient = zmWsClientFactory.Create();
         private EventHandler<AlarmReceivedMessage?>? onMessageReceivedHandler = null;
+        private EventHandler<string?>? onErrorHandler = null;
 
         private bool isTurnedOn = false;
 
@@ -82,26 +83,41 @@ namespace NVRNotifier.Bot.Services
 
         private async Task TurnOnAlarm(Message msg)
         {
-            if (isTurnedOn)
+            try
             {
-                await GetStatus(msg);
-                return;
+                if (isTurnedOn)
+                {
+                    await GetStatus(msg);
+                    return;
+                }
+
+                onErrorHandler = (sender, errorMessage) =>
+                {
+                    bot.SendMessage(msg.Chat, "❌Ошибка сервиса ZoneMinder❌", ParseMode.Html);
+                    throw new Exception($"{errorMessage}");
+                };
+                zmWsClient.OnError += onErrorHandler;
+
+                onMessageReceivedHandler = (sender, zmMessage) =>
+                {
+                    var cameraName = zmMessage?.Events[0].Name;
+                    var eventId = zmMessage?.Events[0].EventId;
+                    bot.SendPhoto(msg.Chat, $"https://{eventId}", $"{cameraName}");
+                };
+                zmWsClient.OnEventReceived += onMessageReceivedHandler;
+
+                await zmWsClient.ConnectAsync();
+
+                isTurnedOn = true;
+
+                await bot.SendMessage(msg.Chat, "▶<b>Включено</b> оповещение с камер", ParseMode.Html);
+                logger.LogInformation("Включено оповещение с камер");
+
             }
-                
-            isTurnedOn = true;
-
-            onMessageReceivedHandler = (sender, zmMessage) =>
+            catch(Exception ex)
             {
-                var cameraName = zmMessage?.Events[0].Name;
-                var eventId = zmMessage?.Events[0].EventId;
-                bot.SendPhoto(msg.Chat, $"https://{eventId}", $"{cameraName}");
-            };
-            zmWsClient.OnEventReceived += onMessageReceivedHandler;
-
-            await zmWsClient.ConnectAsync();
-
-            await bot.SendMessage(msg.Chat, "✅<b>Включено</b> оповещение с камер", ParseMode.Html);
-            logger.LogInformation("Включено оповещение с камер");
+                logger.LogError($"Ошибка при попытке запуска получения событий: {ex.Message}");
+            }
         }
 
         private async Task TurnOffAlarm(Message msg)
@@ -117,12 +133,13 @@ namespace NVRNotifier.Bot.Services
             if (onMessageReceivedHandler != null)
             {
                 zmWsClient.OnEventReceived -= onMessageReceivedHandler;
+                zmWsClient.OnError -= onErrorHandler;
                 onMessageReceivedHandler = null;
             }
 
             await zmWsClient.DisconnectAsync();
 
-            await bot.SendMessage(msg.Chat, $"❌<b>Выключено</b> оповещение с камер", ParseMode.Html);
+            await bot.SendMessage(msg.Chat, $"⏸<b>Выключено</b> оповещение с камер", ParseMode.Html);
             logger.LogInformation("Выключено оповещение с камер");
         }
 
@@ -130,11 +147,11 @@ namespace NVRNotifier.Bot.Services
         {
             if (isTurnedOn)
             {
-                await bot.SendMessage(msg.Chat, "Статус: ▶работает", ParseMode.Html);
+                await bot.SendMessage(msg.Chat, "Статус: \U0001f7e2работает", ParseMode.Html);
             }
             else
             {
-                await bot.SendMessage(msg.Chat, "Статус: ◼остановлен", ParseMode.Html);
+                await bot.SendMessage(msg.Chat, "Статус: 🔴остановлен", ParseMode.Html);
             }
         }
 

@@ -21,6 +21,9 @@ namespace NVRNotifier.Core.Settings
         {
             this.ZoneMinderHost = configuration.GetValue<string>("ZoneMinder:Server") ?? "127.0.0.1";
             this.ZoneMinderPort = configuration.GetValue<string>("ZoneMinder:Port") ?? "9000";
+            this.ZoneMinderUser = configuration.GetValue<string>("ZoneMinder:User") ?? "admin";
+            this.ZoneMinderPassword = configuration.GetValue<string>("ZoneMinder:Password") ?? "admin";
+
             this.TelegramBotToken = configuration.GetValue<string>("Telegram:BotToken") ?? "";
             this.ChatId = configuration.GetValue<long>("Telegram:ChatId");
         }

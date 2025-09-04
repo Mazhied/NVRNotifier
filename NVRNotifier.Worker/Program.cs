@@ -14,7 +14,8 @@ Log.Logger = new LoggerConfiguration().
     MinimumLevel.Debug().
     WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information).
     WriteTo.File("logs/log.txt",
-                 rollingInterval: RollingInterval.Day).
+                 rollingInterval: RollingInterval.Day,
+                 restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information).
     CreateLogger();
 
 builder.Logging.ClearProviders();
