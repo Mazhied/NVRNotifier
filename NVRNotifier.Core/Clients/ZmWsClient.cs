@@ -99,7 +99,7 @@ namespace NVRNotifier.Core.Clients
 
             var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
             var authReceivedMessage = JsonSerializer.Deserialize<ZmAuthReceivedMessage>(message);
-            if (authReceivedMessage == null || authReceivedMessage.Status != "success")
+            if (authReceivedMessage == null || authReceivedMessage.Status.ToLower() != "success")
             {
                 _logger.LogError($"Authentication failed: {authReceivedMessage?.Reason}");
                 throw new Exception($"Authentication failed: {authReceivedMessage?.Reason}");
