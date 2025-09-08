@@ -5,6 +5,7 @@ using NVRNotifier.Core.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -41,6 +42,7 @@ namespace NVRNotifier.Bot.Services
             cancellationToken.ThrowIfCancellationRequested();
             await (update switch
             {
+                { Message: { } message } when message.Chat.Id != appSettings.ChatId => Task.CompletedTask, // Игнорируем сообщения из других чатов
                 { Message: { } message } => OnMessage(message),
                 //{ EditedMessage: { } message } => OnMessage(message),
                 //{ CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
@@ -58,17 +60,19 @@ namespace NVRNotifier.Bot.Services
 
         private async Task OnMessage(Message msg)
         {
-            if (msg.Text == null || msg.Text[0] != '/' || msg.Chat.Id != appSettings.ChatId)
+            if (msg.Text == null || msg.Text[0] != '/')
                 return;
 
             logger.LogInformation($"Получена команда: {msg.Text}");
 
+            var botUsername = (await bot.GetMe()).Username;
+
             await (msg.Text.Split(' ')[0] switch
             {
-                var command when new Regex($"/on({bot.GetMyName()}|)").IsMatch(command) => TurnOnAlarm(msg), // Не работает, проверь
-                "/help" => Usage(msg),
-                "/off" => TurnOffAlarm(msg),
-                "/status" => GetStatus(msg),
+                var command when command == "/on" || command == $"/on@{botUsername}" => TurnOnAlarm(msg),
+                var command when command == "/off" || command == $"/off@{botUsername}" => TurnOffAlarm(msg),
+                var command when command == "/status" || command == $"/status@{botUsername}" => GetStatus(msg),
+                var command when command == "/help" || command == $"/help@{botUsername}" => Usage(msg),
                 _ => Usage(msg)
             });
         }
