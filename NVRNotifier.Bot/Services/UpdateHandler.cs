@@ -98,7 +98,7 @@ namespace NVRNotifier.Bot.Services
                 {
                     var cameraName = zmMessage?.Events[0].Name;
                     var eventId = zmMessage?.Events[0].EventId;
-                    bot.SendPhoto(msg.Chat, $"https://{appSettings.ZoneMinderHost}{eventId}", $"{cameraName}");
+                    bot.SendPhoto(msg.Chat, $"https://{appSettings.ZoneMinderHost}:8889/zm/index.php?view=image&eid={eventId}&fid=objdetect&width=600", $"{cameraName}");
                 };
                 zmWsClient.OnEventReceived += onMessageReceivedHandler;
 
