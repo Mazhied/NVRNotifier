@@ -1,0 +1,8 @@
+services:
+  nvrnotifier.worker:
+    image: ${DOCKER_REGISTRY-}nvrnotifier
+    build:
+      context: .
+      dockerfile: NVRNotifier.Worker/Dockerfile
+    volumes:
+        -   ../logs:../NVRNotifier.Worker/logs
