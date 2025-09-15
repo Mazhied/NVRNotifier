@@ -5,4 +5,4 @@ services:
       context: .
       dockerfile: NVRNotifier.Worker/Dockerfile
     volumes:
-        -   ../logs:../NVRNotifier.Worker/logs
+        -   ./logs:/app/logs
