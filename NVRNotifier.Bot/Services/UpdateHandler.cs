@@ -94,11 +94,27 @@ namespace NVRNotifier.Bot.Services
                 };
                 zmWsClient.OnError += onErrorHandler;
 
-                onMessageReceivedHandler = (sender, zmMessage) =>
+                onMessageReceivedHandler = async (sender, zmMessage) =>
                 {
                     var cameraName = zmMessage?.Events[0].Name;
                     var eventId = zmMessage?.Events[0].EventId;
-                    bot.SendPhoto(msg.Chat, $"https://{appSettings.ZoneMinderHost}:8889/zm/index.php?view=image&eid={eventId}&fid=objdetect&width=600", $"{cameraName}");
+                    var cause = zmMessage?.Events[0].Cause ?? string.Empty;
+
+                    if (cause == "Motion") // Начало события
+                    {
+                        await bot.SendMessage(msg.Chat, "Обнаружено движение...", ParseMode.Html);
+                    }
+                    else if (cause.Contains("End:Motion")) // Конец события
+                    {
+                        var pathToVideo = $"{appSettings.ZoneMinderVideoPath}/{cameraName}/{DateTime.Today.ToString("O")}/{eventId}/{eventId}-video.mp4";
+#if DEBUG
+                        pathToVideo = @"C:\Users\nikka\Downloads\106-video.mp4";
+#endif
+                        await using FileStream stream = File.OpenRead(pathToVideo);
+                        await bot.SendVideo(msg.Chat, stream);
+                        //await bot.SendPhoto(msg.Chat, $"https://{appSettings.ZoneMinderHost}/zm/index.php?view=image&eid={eventId}&fid=objdetect&width=600", $"{cameraName}");
+                    }
+
                 };
                 zmWsClient.OnEventReceived += onMessageReceivedHandler;
 

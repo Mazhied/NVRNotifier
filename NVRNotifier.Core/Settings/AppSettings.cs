@@ -13,6 +13,7 @@ namespace NVRNotifier.Core.Settings
         public string ZoneMinderPort { get; set; }
         public string ZoneMinderUser { get; set; }
         public string ZoneMinderPassword { get; set; }
+        public string ZoneMinderVideoPath { get; set; }
         public string UseApiSsl { get; set; }
         public string TelegramBotToken { get; set; }
         public long ChatId { get; set; }
@@ -23,6 +24,7 @@ namespace NVRNotifier.Core.Settings
             this.ZoneMinderPort = configuration.GetValue<string>("ZoneMinder:Port") ?? "9000";
             this.ZoneMinderUser = configuration.GetValue<string>("ZoneMinder:User") ?? "admin";
             this.ZoneMinderPassword = configuration.GetValue<string>("ZoneMinder:Password") ?? "admin";
+            this.ZoneMinderVideoPath = configuration.GetValue<string>("ZoneMinder:VideoPath") ?? "/mnt/hdd1/camera_recordings";
 
             this.TelegramBotToken = configuration.GetValue<string>("Telegram:BotToken") ?? "";
             this.ChatId = configuration.GetValue<long>("Telegram:ChatId");

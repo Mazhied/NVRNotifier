@@ -24,5 +24,6 @@ namespace NVRNotifier.Core.Models
         public string EventId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string MonitorId { get; set; } = string.Empty;
+        public string Cause { get; set; } = string.Empty;
     }
 }

@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NVRNotifier.Bot.Abstract;
 using NVRNotifier.Core.Clients;
+using NVRNotifier.Core.Settings;
+using Telegram.Bot;
 
 namespace NVRNotifier.Worker
 {
@@ -10,12 +12,16 @@ namespace NVRNotifier.Worker
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<Worker> _logger;
         private readonly ZmWsClientFactory _zmWsClientFactory;
+        private readonly ITelegramBotClient _botClient;
+        private readonly IAppSettings _appSettings;
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, ZmWsClientFactory zmWsClientFactory)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, ZmWsClientFactory zmWsClientFactory, ITelegramBotClient botClient, IAppSettings appSettings)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _zmWsClientFactory = zmWsClientFactory;
+            _botClient = botClient;
+            _appSettings = appSettings;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -41,12 +47,17 @@ namespace NVRNotifier.Worker
 
                     await receiver.ReceiveAsync(stoppingToken);
                 }
+                catch (OperationCanceledException)
+                {
+                    await _botClient.SendMessage(_appSettings.ChatId, "Сервис остановлен");
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError("Polling failed with exception: {Exception}", ex);
                     // Cooldown if something goes wrong
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }
+
                 await Task.Delay(1000, stoppingToken);
             }
         }

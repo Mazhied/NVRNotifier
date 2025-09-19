@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 
 using NVRNotifier.Bot.Abstract;
+using NVRNotifier.Core.Settings;
 
 namespace NVRNotifier.Bot.Services
 {
