@@ -8,3 +8,6 @@ services:
     volumes:
         -   ./logs:/app/logs
         -   /mnt/hdd1/camera_recordings:/app/camera_recordings
+        - /opt/NVRNotifier/config/appsettings.Production.json:/app/appsettings.Production.json
+    environment:
+        - ASPNETCORE_ENVIRONMENT=Production
