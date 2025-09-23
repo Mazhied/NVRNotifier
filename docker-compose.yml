@@ -1,8 +1,10 @@
 services:
   nvrnotifier.worker:
-    image: ${DOCKER_REGISTRY-}nvrnotifier
+    image: ghcr.io/Mazhied/NVRNotifier:latest
+    container_name: NVRNotifier
     build:
       context: .
       dockerfile: NVRNotifier.Worker/Dockerfile
     volumes:
         -   ./logs:/app/logs
+        -   /mnt/hdd1/camera_recordings:/app/camera_recordings
